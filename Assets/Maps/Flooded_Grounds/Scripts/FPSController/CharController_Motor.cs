@@ -2,75 +2,70 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CharController_Motor : MonoBehaviour {
+public class CharController_Motor : MonoBehaviour
+{
 
-	public float speed = 10.0f;
-	public float sensitivity = 30.0f;
-	public float WaterHeight = 15.5f;
-	CharacterController character;
-	public GameObject cam;
-	float moveFB, moveLR;
-	float rotX, rotY;
-	public bool webGLRightClickRotation = true;
-	float gravity = -9.8f;
+    [Header("Speed Vars")]
+    //Value Variables
+    public float curSpeed;
+    public float minSpeed, maxSpeed, jumpSpeed;
+    public float acceleration = 1.0f;
+    public float sensitivity = 100f;
+    public float _gravity = 20;
+    //Struct - Contains Multiple Variables (eg...3 floats)
+    private Vector3 _moveDir;
+    private float mouseX, mouseY;
+    //Reference Variable
+    public CharacterController _charController;
+    public Transform cam;
 
+    [Header("Check Bools")]
+    public bool isWalking;
 
-	void Start(){
-		//LockCursor ();
-		character = GetComponent<CharacterController> ();
-		if (Application.isEditor) {
-			webGLRightClickRotation = false;
-			sensitivity = sensitivity * 1.5f;
-		}
-	}
-
-
-	void CheckForWaterHeight(){
-		if (transform.position.y < WaterHeight) {
-			gravity = 0f;			
-		} else {
-			gravity = -9.8f;
-		}
-	}
-
-
-
-	void Update(){
-		moveFB = Input.GetAxis ("Horizontal") * speed;
-		moveLR = Input.GetAxis ("Vertical") * speed;
-
-		rotX = Input.GetAxis ("Mouse X") * sensitivity;
-		rotY = Input.GetAxis ("Mouse Y") * sensitivity;
-
-		//rotX = Input.GetKey (KeyCode.Joystick1Button4);
-		//rotY = Input.GetKey (KeyCode.Joystick1Button5);
-
-		CheckForWaterHeight ();
-
-
-		Vector3 movement = new Vector3 (moveFB, gravity, moveLR);
-
-
-
-		if (webGLRightClickRotation) {
-			if (Input.GetKey (KeyCode.Mouse0)) {
-				CameraRotation (cam, rotX, rotY);
-			}
-		} else if (!webGLRightClickRotation) {
-			CameraRotation (cam, rotX, rotY);
-		}
-
-		movement = transform.rotation * movement;
-		character.Move (movement * Time.deltaTime);
-	}
+    private void Start()
+    {
+        _charController = GetComponent<CharacterController>();
+        Cursor.lockState = CursorLockMode.Locked;
+    }
+    private void Update()
+    {
+        Move();
+        CameraController();
+    }
+    private void Move()
+    {
+        if (_charController.isGrounded)
+        {
+            if (_charController.transform.position != _moveDir)
+            {
+                curSpeed = maxSpeed;
+            }
+            //move this direction based off inputs
+            _moveDir = transform.TransformDirection(new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical")) * curSpeed);
+            if (Input.GetButton("Jump"))
+            {
+                _moveDir.y = jumpSpeed;
+            }
+        }
+        else
+        {
+            curSpeed = 0;
+        }
+        //Regardless if we are grounded or not
+        //apply grvity
+        _moveDir.y -= _gravity * Time.deltaTime;
+        //apply mo
+        _charController.Move(_moveDir * Time.deltaTime);
+    }
 
 
-	void CameraRotation(GameObject cam, float rotX, float rotY){		
-		transform.Rotate (0, rotX * Time.deltaTime, 0);
-		cam.transform.Rotate (-rotY * Time.deltaTime, 0, 0);
-	}
+    void CameraController()
+    {
+        mouseX += Input.GetAxis("Mouse X") * sensitivity * Time.fixedDeltaTime;
+        mouseY -= Input.GetAxis("Mouse Y") * sensitivity * Time.fixedDeltaTime;
+        mouseY = Mathf.Clamp(mouseY, -90f, 90f);
 
-
-
-
+        cam.transform.localRotation = Quaternion.Euler(mouseY, 0f, 0f);
+        transform.rotation = Quaternion.Euler(0f, mouseX, 0f);
+    }
 }
